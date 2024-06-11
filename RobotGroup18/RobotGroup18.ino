@@ -1,68 +1,100 @@
-#include <tcs3200.h>
+#include <tcs3200.h> // Library for TCS3200 color sensor
+#include <WiFiNINA.h> // Library for WiFi functionality
 
+// Define IR sensor pins
 #define IR_1 4
 #define IR_2 7
 #define IR_3 8
 #define IR_4 12
 
+// Define color sensor pins
 #define COLOR_0 A0
 #define COLOR_1 A1
 #define COLOR_2 A2
 #define COLOR_3 A3
 #define COLOR_OUT A4
 
+// Define ultrasonic sensor pins
+#define TRIG_PIN 10
+#define ECHO_PIN 11
+
+// Define motor control pins
 #define MOTOR_PIN1 3
 #define MOTOR_PIN2 5
 #define MOTOR_PIN3 6
 #define MOTOR_PIN4 9
 
-unsigned long irSensorMillis = 0; // Timer to track the last report of the IR sensors
-unsigned long colorSensorMillis = 0; // Timer to track the last report of the color sensors
+// Define RGB LED pins
+#define LED_R 25
+#define LED_G 26
+#define LED_B 27
+
+// Define state variables
+String currentState = "Null";
+String oldCurrentState = "Null";
+
+// Define timing variables for sensor readings
+unsigned long irSensorMillis = 0;
+unsigned long colorSensorMillis = 0;
+unsigned long ultrasonicSensorMillis = 0;
+unsigned long motorlogicMillis = 0;
+
+// Define variables for turning direction and state
+String turnDirection = "";
+String lastTurnDirection = "";
+bool isTurning = false;
+bool wallDetected = false;
+
+// Define variable for distance measurement
+int currentDistance = 1000;
+
+// Variable to store current time in milliseconds
+unsigned long currentMillis;
 
 void setup() {
-  // put your setup code here, to run once:
-  
-  // Setup Infrared Pins
+  // Start serial communication at 250000 bps
+  Serial.begin(250000);
+
+  // Set IR sensor pins as input
   pinMode(IR_1, INPUT);
   pinMode(IR_2, INPUT);
   pinMode(IR_3, INPUT);
   pinMode(IR_4, INPUT);
 
-  // Setup Motor Pins
+  // Set ultrasonic sensor pins
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
+
+  // Set motor control pins as output
   pinMode(MOTOR_PIN1, OUTPUT);
   pinMode(MOTOR_PIN2, OUTPUT);
   pinMode(MOTOR_PIN3, OUTPUT);
   pinMode(MOTOR_PIN4, OUTPUT);
 
+  // Set RGB LED pins as output using WiFi library functions
+  WiFiDrv::pinMode(LED_R, OUTPUT);
+  WiFiDrv::pinMode(LED_G, OUTPUT);
+  WiFiDrv::pinMode(LED_B, OUTPUT);
 }
 
+// The loop function runs over and over again forever
 void loop() {
-  // put your main code here, to run repeatedly:
+  // Get the current time in milliseconds
+  currentMillis = millis();
+  Serial.println(currentMillis);
   
-  // Get the current run time in milliseconds
-  unsigned long currentMillis = millis();
-
-  // Check the states of the IR sensors every 500ms
-  if (currentMillis - irSensorMillis >= 500) {
-    irSensorMillis = currentMillis;
-    readInfrared();
-  }
-
-  // Read the color sensor
-  if (currentMillis - colorSensorMillis >= 250) {
+  // Read color sensor every 20 milliseconds
+  if (currentMillis - colorSensorMillis >= 20) {
     colorSensorMillis = currentMillis;
     readColorSensor();
-
-    // Test motor control by creating a routine that moves
-    // the robot forward for 1 second and then turns 90 degrees right.
-    // You will have to adjust the delay after the turn to make it a perfect square.
-    motorControl(255, 255); // Go straight forward
-    delay(1000);
-    motorControl(0, 0); // Stop momentarily
-    delay(100);
-    motorControl(255, -255); // Turn to the Right;
-    delay(500);
-    motorControl(0, 0); // Stop momentarily
-    delay(100);
   }
+
+  // Read ultrasonic sensor every 20 milliseconds
+  if (currentMillis - ultrasonicSensorMillis >= 20) {
+    ultrasonicSensorMillis = currentMillis;
+    readUltrasonic();
+  }
+  
+  // Run robot logic
+  robotLogic();
 }
